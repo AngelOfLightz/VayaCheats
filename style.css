@@ -1,0 +1,460 @@
+/* Kozmik Renk Matrisi */
+:root {
+    --space-black: #020306;
+    --neon-cyan: #00ffcc;
+    --neon-purple: #9000ff;
+    --panel-blur-bg: rgba(6, 11, 22, 0.75); 
+    --text-bright: #ffffff;
+    --text-dim: #94a3b8;
+    --border-glow: rgba(0, 255, 204, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+body { background-color: var(--space-black); color: var(--text-bright); overflow: hidden; height: 100vh; -webkit-font-smoothing: antialiased; }
+
+#cosmicCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -3; pointer-events: none; }
+.nebula-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 70% 30%, rgba(144,0,255,0.06) 0%, rgba(2,3,6,0) 60%); z-index: -2; pointer-events: none; }
+
+.quantum-flare {
+    position: fixed; width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,255,204,0.06) 0%, rgba(144,0,255,0.02) 40%, rgba(0,0,0,0) 70%);
+    top: 0; left: 0; border-radius: 50%; pointer-events: none; z-index: -1; 
+    will-change: transform; transform: translate3d(-1000px, -1000px, 0);
+}
+
+/* YELPAZE KAPSAYICISI */
+.galaxy-wrapper {
+    display: flex; width: 100vw; height: 100vh; padding: 40px;
+    overflow: hidden; position: relative; gap: 15px; perspective: 2000px;
+    cursor: grab; user-select: none; -webkit-user-select: none;
+}
+.galaxy-wrapper:active { cursor: grabbing; }
+
+/* HOLOGRAFİK PLAKALAR */
+.hologram-sheet {
+    display: flex; height: 100%; background: var(--panel-blur-bg);
+    backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+    border: 1px solid var(--border-glow); border-radius: 20px;
+    overflow: hidden; position: relative; flex-shrink: 0;
+    width: 60px; opacity: 0.4;
+    transform: rotateY(15deg) translateZ(-40px);
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s ease;
+    will-change: transform, width, opacity;
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.hologram-sheet::-webkit-scrollbar { display: none !important; width: 0px; height: 0px; }
+
+.hologram-sheet.active-sheet {
+    opacity: 1;
+    transform: rotateY(0deg) translateZ(0px);
+    border-color: rgba(0, 255, 204, 0.15);
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+}
+
+/* Sol Dik Şerit Navbar */
+.sheet-tab {
+    width: 60px; height: 100%; display: flex; flex-direction: column;
+    justify-content: flex-start; align-items: center; padding: 40px 0;
+    cursor: pointer; background: rgba(2, 4, 8, 0.4); border-right: 1px solid rgba(255,255,255,0.03);
+    flex-shrink: 0; z-index: 5; gap: 20px;
+}
+.tab-num { font-size: 13px; font-weight: 800; font-family: monospace; color: var(--text-dim); transition: color 0.3s; }
+.tab-vertical-title { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.tab-vertical-title span { font-size: 13px; font-weight: 800; color: var(--text-dim); display: block; opacity: 0.4; transition: color 0.3s; }
+.hologram-sheet.active-sheet .tab-vertical-title span { color: var(--neon-cyan); opacity: 1; text-shadow: 0 0 10px rgba(0, 255, 204, 0.6); }
+.hologram-sheet.active-sheet .tab-num { color: var(--neon-purple); text-shadow: 0 0 10px rgba(144,0,255,0.5); }
+.tab-indicator-line { width: 2px; height: 0px; background: var(--neon-cyan); transition: height 0.5s ease; border-radius: 2px; }
+.hologram-sheet.active-sheet .tab-indicator-line { height: 25px; box-shadow: 0 0 10px var(--neon-cyan); }
+
+/* İÇERİK MASKESİ (Sabit kemik genişlik korundu) */
+.sheet-content {
+    min-width: 1050px; 
+    max-width: 1050px;
+    height: 100%; padding: 60px 4% 60px 5%; overflow-y: auto; overflow-x: hidden;
+    opacity: 0; visibility: hidden; transform: translate3d(20px, 0, 0);
+    will-change: transform, opacity;
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.sheet-content::-webkit-scrollbar { display: none !important; width: 0px; height: 0px; }
+
+/* Tipografi */
+.panel-section-title { font-family: monospace; font-size: 12px; font-weight: 800; color: var(--neon-cyan); letter-spacing: 2px; margin-bottom: 10px; opacity: 0.8; }
+.panel-glitch-tag { font-family: monospace; font-size: 11px; font-weight: 800; color: #c084fc; letter-spacing: 3px; margin-bottom: 25px; white-space: nowrap; }
+.quantum-text { font-size: 64px; font-weight: 900; line-height: 1.1; letter-spacing: -2px; margin-bottom: 25px; color: #fff; text-shadow: 0 4px 10px rgba(0,0,0,0.5); white-space: nowrap; }
+.gradient-text { background: linear-gradient(135deg, #ffffff 30%, var(--text-dim) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.panel-p { color: var(--text-dim); font-size: 17px; line-height: 1.7; max-width: 600px; margin-bottom: 45px; font-weight: 500; }
+
+/* Arama Paneli */
+.cosmic-search { display: flex !important; width: 540px !important; background: rgba(4, 7, 14, 0.8) !important; border: 1px solid rgba(0, 255, 204, 0.2) !important; padding: 6px !important; border-radius: 50px !important; box-shadow: 0 15px 35px rgba(0,0,0,0.4) !important; align-items: center !important; justify-content: space-between !important; flex-direction: row !important; }
+.cosmic-search input { flex: 1 !important; padding: 12px 20px !important; border: none !important; background: transparent !important; color: #fff !important; outline: none !important; font-size: 15px !important; font-weight: 600 !important; }
+.btn-execute { background: var(--text-bright); color: #000; border: none; padding: 12px 30px; font-weight: 800; border-radius: 50px; cursor: pointer; font-size: 13px; letter-spacing: 1px; transition: 0.2s; flex-shrink: 0; }
+.btn-execute:hover { background: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan); }
+
+/* Canlı Sistem Göstergeleri */
+.live-network-grid { display: flex !important; flex-direction: row !important; gap: 20px !important; width: 540px !important; margin-top: 30px !important; }
+.network-node { flex: 1 !important; background: rgba(4, 8, 15, 0.35) !important; border: 1px solid rgba(255,255,255,0.02) !important; padding: 20px !important; border-radius: 12px !important; }
+.node-header { display: flex !important; align-items: center !important; gap: 8px !important; margin-bottom: 10px !important; }
+.node-title { font-family: monospace !important; font-size: 10px !important; font-weight: 800 !important; color: var(--text-dim) !important; }
+.node-dot { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.pulses-cyan { background: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan); animation: pulseLight 1.5s infinite; }
+.pulses-purple { background: #a855f7; box-shadow: 0 0 8px #a855f7; animation: pulseLight 1.5s infinite; }
+@keyframes pulseLight { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+.node-value { font-size: 24px !important; font-weight: 900 !important; color: #fff !important; margin-bottom: 4px !important; }
+.node-desc { font-size: 11px !important; color: var(--text-dim) !important; line-height: 1.4 !important; }
+
+/* 🛠️ PARLATILMIŞ PROJE KARTLARI (Butonların kaybolma sorunu %100 çözüldü) 🛠️ */
+.section-title { font-size: 26px; font-weight: 900; letter-spacing: 1px; margin-bottom: 35px; white-space: nowrap; }
+.floating-cards-row { display: flex; gap: 30px; flex-direction: row; flex-wrap: nowrap; padding-bottom: 20px; width: max-content; }
+.cosmic-card { background: rgba(4, 8, 15, 0.55); border: 1px solid var(--border-glow); padding: 35px; border-radius: 16px; width: 350px; position: relative; overflow: hidden; flex-shrink: 0; transform-style: preserve-3d; transform: perspective(1000px); transition: border-color 0.3s, box-shadow 0.3s; }
+.card-glow-point { position: absolute; width: 100px; height: 100px; background: rgba(0, 255, 204, 0.01); filter: blur(35px); top: -30px; right: -30px; pointer-events: none; }
+.cosmic-card:hover .card-glow-point { background: rgba(0, 255, 204, 0.05); }
+.cosmic-card:hover { border-color: rgba(0,255,204,0.25); box-shadow: 0 20px 40px rgba(0,255,204,0.04); }
+.card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; white-space: nowrap; }
+.card-id { font-family: monospace; font-size: 11px; color: var(--text-dim); }
+.card-status.status-online { font-size: 10px; font-weight: 800; color: var(--neon-cyan); border: 1px solid rgba(0,255,204,0.3); background: rgba(0,255,204,0.05); padding: 3px 9px; border-radius: 4px; }
+.cosmic-card h3 { font-size: 20px; font-weight: 800; margin-bottom: 12px; white-space: nowrap; color: #ffffff; }
+.card-desc { color: #cbd5e1; font-size: 14px; line-height: 1.6; min-height: 65px; margin-bottom: 25px; white-space: normal; }
+.card-bottom { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 20px; }
+.card-specs span { font-family: monospace; font-size: 11px; color: #fff; background: rgba(255,255,255,0.04); padding: 4px 10px; border-radius: 4px; }
+.btn-cosmic-inject { text-decoration: none; font-size: 12px; font-weight: 800; color: #000000 !important; background: #ffffff !important; border: 1px solid #ffffff; padding: 10px 22px; border-radius: 50px; transition: 0.3s; display: inline-block; box-shadow: 0 4px 12px rgba(255,255,255,0.15); }
+.cosmic-card:hover .btn-cosmic-inject { background: var(--neon-cyan) !important; border-color: var(--neon-cyan) !important; box-shadow: 0 4px 15px var(--neon-cyan); }
+/* 🛠️ DÜZELTİLMİŞ GELİŞTİRİCI VİZYON KUTULARI (Metinlerin üst üste binme hatası sıfırlandı) 🛠️ */
+.vision-wrapper { max-width: 650px; }
+.vision-metrics { display: flex !important; flex-direction: row !important; gap: 40px !important; margin-top: 40px !important; white-space: nowrap !important; }
+.metric-box { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; }
+.metric-box strong { font-size: 42px !important; font-weight: 900 !important; color: var(--neon-cyan) !important; line-height: 1 !important; text-shadow: 0 0 10px rgba(0,255,204,0.3); }
+.metric-box span { display: block !important; color: var(--text-dim) !important; font-size: 13px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; margin: 0 !important; padding: 0 !important; }
+
+/* İletişim Matrisi */
+/* 🔥 3 SÜTUNUN DA DİKEY BOYUNU JİLET GİBİ 380PX'E SABİTLEYEN ANA MATRİS 🔥 */
+.contact-split-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 30px !important;
+    width: 100% !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+}
+
+/* YELPAZE İÇERİK ODASI (Ekrandan sağdan taşmayı önleyen esnek akış) */
+.sheet-content {
+    min-width: 1050px; 
+    max-width: 1050px;
+    height: 100%; padding: 60px 4% 60px 5%; overflow-y: auto; overflow-x: hidden;
+    opacity: 0; visibility: hidden; transform: translate3d(20px, 0, 0);
+    will-change: transform, opacity;
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.sheet-content::-webkit-scrollbar { display: none !important; width: 0px; height: 0px; }
+
+/* 1. SOL SÜTUN: GÜVENLİ FORM ALANI (Yükseklik 380px olarak kilitlendi) */
+.contact-form-wrapper { 
+    background: rgba(4, 8, 15, 0.45) !important; 
+    border: 1px solid var(--border-glow) !important; 
+    padding: 35px !important; 
+    border-radius: 16px !important; 
+    width: 380px !important; 
+    height: 380px !important; /* Sabit dikey hiza kilidi */
+    position: relative !important; 
+    z-index: 2 !important; 
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important; 
+    flex-shrink: 0 !important; 
+    display: flex !important;
+    flex-direction: column !important;
+}
+.form-sub-txt { color: var(--text-dim) !important; font-size: 13px !important; margin-bottom: 20px !important; display: block !important; }
+.cosmic-form { display: flex !important; flex-direction: column !important; gap: 12px !important; margin-top: auto !important; }
+.cosmic-input-group { width: 100% !important; position: relative !important; }
+.cosmic-input-group input, .cosmic-input-group textarea { width: 100% !important; padding: 12px 20px !important; background: rgba(0, 0, 0, 0.5) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 50px !important; color: #ffffff !important; outline: none !important; font-size: 14px !important; font-weight: 600 !important; }
+.cosmic-input-group textarea { border-radius: 16px !important; height: 90px !important; resize: none !important; white-space: normal !important; }
+.cosmic-input-group input::placeholder, .cosmic-input-group textarea::placeholder { color: #94a3b8 !important; }
+.cosmic-input-group input:focus, .cosmic-input-group textarea:focus { border-color: var(--neon-cyan) !important; background: rgba(0,0,0,0.6) !important; box-shadow: 0 0 12px rgba(0, 255, 204, 0.15) !important; }
+.btn-cosmic-submit { background: linear-gradient(135deg, var(--neon-purple), #7300cc) !important; color: #fff !important; border: none !important; padding: 13px !important; border-radius: 50px !important; font-weight: 800 !important; font-size: 13px !important; cursor: pointer; transition: transform 0.2s !important; width: 100% !important; text-transform: uppercase !important; letter-spacing: 0.5px !important; margin-top: 5px !important; }
+.btn-cosmic-submit:hover { transform: translateY(-1px) !important; }
+
+/* 2. ORTA SÜTUN: SOSYAL MEDYA (Matematiksel olarak formun boyuna eşitlendi) */
+.social-networks-wrapper { 
+    width: 250px !important;
+    height: 380px !important; /* Sol form paneliyle birebir milimetrik dikey eşitlik */
+    display: flex !important; 
+    flex-direction: column !important; 
+    gap: 20px !important; /* Boşluk payları milimetrik kilitlendi */
+    align-items: flex-start !important; 
+    justify-content: flex-start !important;
+    flex-shrink: 0 !important;
+}
+.social-net-card { background: rgba(4, 8, 15, 0.45) !important; border: 1px solid rgba(255, 255, 255, 0.03) !important; padding: 14px !important; border-radius: 14px !important; text-decoration: none !important; width: 100% !important; transition: border-color 0.3s, transform 0.3s !important; display: flex !important; flex-direction: column !important; justify-content: center !important; height: 85px !important; text-align: left !important; align-items: flex-start !important; flex-shrink: 0 !important; }
+.social-net-header { display: flex !important; align-items: flex-start !important; gap: 12px !important; width: 100% !important; justify-content: flex-start !important; }
+.social-net-icon { font-size: 14px; margin-top: 2px; transition: color 0.3s; display: inline-block; flex-shrink: 0; }
+.social-text-block { display: flex !important; flex-direction: column !important; align-items: flex-start !important; text-align: left !important; width: 100% !important; }
+.social-net-name { font-family: monospace !important; font-size: 13px !important; font-weight: 800 !important; color: #ffffff !important; margin-bottom: 2px !important; display: block !important; }
+.social-net-desc { font-size: 11px !important; color: #cbd5e1 !important; font-weight: 500 !important; display: block !important; text-align: left !important; }
+
+.discord-net:hover { border-color: rgba(88, 101, 242, 0.4) !important; transform: translateY(-2px) !important; }
+.discord-net:hover .social-net-icon { color: #5865F2 !important; }
+.youtube-net:hover { border-color: rgba(255, 0, 0, 0.4) !important; transform: translateY(-2px) !important; }
+.youtube-net:hover .social-net-icon { color: #FF0000; }
+.instagram-net:hover { border-color: rgba(225, 48, 108, 0.4) !important; transform: translateY(-2px) !important; }
+.instagram-net:hover .social-net-icon { color: #E1306C !important; }
+
+/* MADE BY VAYASSU İMZA KUTUSU (Yüksekliği milimetrik olarak kilitlendi) */
+.signature-credit-box { background: rgba(144, 0, 255, 0.02) !important; border: 1px dashed rgba(144, 0, 255, 0.1) !important; padding: 12px !important; border-radius: 12px !important; text-align: center !important; width: 100% !important; height: 65px !important; display: flex !important; flex-direction: column !important; justify-content: center !important; flex-shrink: 0 !important; }
+.sig-title { display: block !important; font-family: monospace !important; font-size: 9px !important; font-weight: 800 !important; color: #94a3b8 !important; letter-spacing: 2px !important; margin-bottom: 2px !important; }
+.sig-name { font-size: 12px !important; font-weight: 600 !important; color: #ffffff !important; }
+.sig-name span { color: var(--neon-purple) !important; font-weight: 800 !important; text-shadow: 0 0 10px rgba(144, 0, 255, 0.4) !important; }
+
+/* 3. SAĞ SÜTUN: SİBER MATRİS İSTASYONU (Yükseklik 380px olarak kilitlendi) */
+.cyber-matrix-station {
+    width: 250px !important; 
+    height: 380px !important; /* Diğer tüm sütunlarla dikeyde tam milimetrik eşitlik kilidi */
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+    justify-content: flex-start !important;
+    flex-shrink: 0 !important;
+}
+
+/* Üst Büyük Kutu */
+.security-logs-station { background: rgba(2, 4, 8, 0.4) !important; border: 1px dashed rgba(0, 255, 204, 0.1) !important; border-radius: 14px !important; padding: 14px !important; height: 185px !important; display: flex !important; flex-direction: column !important; width: 100% !important; flex-shrink: 0 !important; }
+.log-station-header { display: flex !important; align-items: center !important; gap: 8px !important; font-family: monospace !important; font-size: 10px !important; font-weight: 800 !important; color: var(--neon-cyan) !important; letter-spacing: 1px !important; margin-bottom: 8px !important; border-bottom: 1px solid rgba(255,255,255,0.03) !important; padding-bottom: 6px !important; }
+.log-pulse-dot { width: 5px; height: 5px; background: var(--neon-cyan); border-radius: 50%; box-shadow: 0 0 8px var(--neon-cyan); animation: logPulse 1.2s infinite; }
+@keyframes logPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+.log-stream-box { display: flex !important; flex-direction: column !important; gap: 6px !important; overflow: hidden; }
+.log-line-item { font-family: monospace !important; font-size: 10px !important; color: var(--text-dim) !important; line-height: 1.3 !important; white-space: normal !important; text-align: left !important; }
+.cyan-log { color: rgba(0, 255, 204, 0.7) !important; }
+.purple-log { color: rgba(168, 85, 247, 0.7) !important; }
+
+/* Yan Yana İki Küçük Kutu */
+.cyber-small-row { display: flex !important; gap: 14px !important; width: 100% !important; flex-shrink: 0 !important; }
+.cyber-mini-box { flex: 1 !important; background: rgba(2, 4, 8, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.02) !important; padding: 10px !important; border-radius: 10px !important; display: flex !important; flex-direction: column !important; align-items: flex-start !important; height: 55px !important; justify-content: center !important; }
+.mini-box-tag { font-family: monospace !important; font-size: 8px !important; font-weight: 800 !important; color: var(--text-dim) !important; letter-spacing: 0.5px !important; margin-bottom: 2px !important; }
+.mini-box-val { font-size: 13px !important; font-weight: 900 !important; color: #ffffff !important; }
+
+/* Alttaki Büyük Grafik Kutusu */
+.cyber-big-status-box { background: rgba(2, 4, 8, 0.4) !important; border: 1px solid rgba(255, 255, 255, 0.02) !important; padding: 14px !important; border-radius: 14px !important; height: 110px !important; width: 100% !important; display: flex !important; flex-direction: column !important; justify-content: space-between !important; flex-shrink: 0 !important; }
+.big-box-header { font-family: monospace !important; font-size: 9px !important; font-weight: 800 !important; color: var(--neon-purple) !important; letter-spacing: 0.5px !important; }
+.heatmap-bar-wrapper { display: flex !important; flex-direction: column !important; gap: 5px !important; margin: 4px 0 !important; }
+.heatmap-bar-line { width: 100% !important; height: 4px !important; background: rgba(255, 255, 255, 0.02) !important; border-radius: 2px !important; overflow: hidden !important; }
+.h-fill { height: 100% !important; border-radius: 2px !important; }
+.fill-90 { width: 90%; background: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan); }.fill-40 { width: 40%; background: var(--neon-purple); box-shadow: 0 0 8px var(--neon-purple); }.fill-75 { width: 75%; background: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan); }.big-box-footer { font-family: monospace !important; font-size: 8px !important; font-weight: 700 !important; color: var(--text-dim) !important; letter-spacing: 0.5px !important; }footer { position: fixed; bottom: 15px; right: 20px; color: #94a3b8; font-size: 11px; font-weight: 700; font-family: monospace; pointer-events: none; z-index: 10; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap; }
+
+/* 🔥 NORMALDE ASİL MOR PARLAYAN VE AŞAĞI DOĞRU HARBİ UZAYAN KONTROL KAPSÜLÜ 🔥 */
+.btn-sidebar-portal {
+    position: relative !important;
+    text-decoration: none !important;
+    font-family: monospace !important;
+    width: 44px !important; 
+    height: auto !important; 
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    
+    /* Normalde parlayan asil mor siber kesik çizgiler */
+    border: 1px dashed rgba(144, 0, 255, 0.4) !important; 
+    border-radius: 10px !important;
+    background: rgba(4, 7, 14, 0.7) !important; 
+    
+    /* Kutuyu dikeyde aşağı uzatan altın oran iç boşlukları */
+    padding: 16px 0 20px 0 !important; 
+    
+    margin-bottom: 25px !important; 
+    flex-shrink: 0 !important;
+    gap: 12px !important; 
+    
+    /* Yumuşak renk geçiş motoru */
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Normalde mor yanan siber amblem */
+.portal-icon {
+    font-size: 14px !important;
+    color: var(--neon-purple) !important;
+    text-shadow: 0 0 8px rgba(144, 0, 255, 0.7) !important;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s !important;
+    display: block !important;
+}
+
+/* Harfleri dikeyde ayırarak aşağı uzamayı sabitleyen iç matris */
+.portal-vertical-txt {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important; 
+}
+
+/* Giren adamın gözünü ilk saniyede kamaştıracak sürekli parlayan neon mor harfler */
+.portal-vertical-txt span {
+    font-size: 11px !important; 
+    font-weight: 900 !important; 
+    color: var(--neon-purple) !important; /* İlk bakışta direkt dikkat çeken asil mor */
+    letter-spacing: 0px !important;
+    text-shadow: 0 0 8px rgba(144, 0, 255, 0.6) !important; /* Sürekli yanan neon mor sisi */
+    opacity: 1 !important;
+    line-height: 1 !important;
+    transition: color 0.3s, text-shadow 0.3s !important;
+}
+
+/* 🔥 MOUSE ÜZERİNE GELDİĞİNDE (HOVER) JİLET GİBİ TURKUAZA DÖNÜŞME REAKSİYONU 🔥 */
+.btn-sidebar-portal:hover {
+    border-style: solid !important;
+    border-color: var(--neon-cyan) !important; /* Çerçeve keskin turkuaza döner */
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.3) !important;
+    transform: scale(1.03) !important;
+}
+
+.btn-sidebar-portal:hover .portal-icon {
+    color: #ffffff !important; /* İkon saf beyaz ışıkla patlar */
+    transform: rotate(90deg) !important; /* Çok klas bir siber dönüş */
+    text-shadow: 0 0 10px #ffffff !important;
+}
+
+.btn-sidebar-portal:hover .portal-vertical-txt span {
+    color: var(--neon-cyan) !important; /* Harfler hover anında turkuaz siber lazer rengini alır */
+    text-shadow: 0 0 10px rgba(0, 255, 204, 0.8) !important;
+}
+
+/* Mouse üstündeyken sağa süzülen şık bilgi balonu */
+.btn-sidebar-portal::after {
+    content: attr(data-hover) !important;
+    position: absolute !important;
+    left: 55px !important;
+    top: 50% !important;
+    transform: translateY(-50%) translate3d(-10px, 0, 0) !important;
+    background: rgba(4, 7, 14, 0.95) !important;
+    border: 1px solid var(--border-glow) !important;
+    color: var(--neon-cyan) !important;
+    padding: 6px 14px !important;
+    border-radius: 6px !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px !important;
+    white-space: nowrap !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: opacity 0.3s ease, transform 0.3s ease !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6) !important;
+    pointer-events: none !important;
+}
+
+.btn-sidebar-portal:hover::after {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(-50%) translate3d(0, 0, 0) !important;
+}
+/* 🔥 PANEL İÇİ SOL ÜSTE GÖMÜLEN PORTAL GERİ DÖNÜŞ BUTONU 🔥 */
+.btn-auth-back-portal {
+    display: inline-block !important;
+    text-decoration: none !important;
+    font-family: monospace !important;
+    font-size: 11px !important; /* Bir tık büyütüldü */
+    font-weight: 800 !important;
+    color: #94a3b8 !important; /* Karanlıktan kurtarılan belirgin siber gümüş tonu */
+    letter-spacing: 1px !important;
+    margin-bottom: 20px !important; 
+    transition: all 0.3s ease !important;
+    opacity: 0.7 !important; /* İlk bakışta daha berrak görünmesi sağlandı */
+}
+
+/* Üzerine gelindiğinde sol butonla tam uyumlu neon mor parlama reaksiyonu */
+.btn-auth-back-portal:hover {
+    color: #ffffff !important; /* Hover anında saf beyaz */
+    opacity: 1 !important;
+    text-shadow: 0 0 10px rgba(144, 0, 255, 0.8) !important; /* Harbi neon mor sisi mühürlendi */
+    transform: translate3d(-3px, 0, 0) !important;
+}
+
+
+/* Mobilde butonun hizasını koruma */
+@media (max-width: 992px) {
+    .btn-terminal-portal {
+        position: relative;
+        top: 0;
+        right: 0;
+        display: inline-block;
+        margin-bottom: 15px;
+        text-align: center;
+        width: 100%;
+    }
+}
+/* 🔥 GİRİŞ VE KAYIT ODASI PANEL AYARLARI KİLİDİ 🔥 */
+.auth-box .cosmic-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+}
+
+/* Giriş kutularının içi ve placeholder yazıları parlatıldı */
+.auth-box .cosmic-input-group input {
+    color: #ffffff !important; /* Yazılan yazı saf beyaz yapıldı */
+    font-weight: 600 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 14px 20px !important;
+    font-size: 14px !important;
+}
+
+.auth-box .cosmic-input-group input::placeholder {
+    color: #94a3b8 !important; /* İpucu yazıları berrak gümüş yapıldı */
+    opacity: 1 !important;
+}
+
+.auth-box .cosmic-input-group input:focus {
+    border-color: var(--neon-cyan) !important;
+    box-shadow: 0 0 12px rgba(0, 255, 204, 0.2) !important;
+}
+
+/* 🔥 BUTON YAZILARINI TAM ORTALAYAN VE PARLATAN STİL 🔥 */
+.auth-box .btn-cosmic-submit {
+    display: flex !important;
+    align-items: center !important; /* Dikeyde tam ortalama */
+    justify-content: center !important; /* Yatayda tam ortalama */
+    height: 48px !important; /* Standart komuta boyu */
+    padding: 0 20px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px !important;
+    text-transform: uppercase !important;
+    border-radius: 50px !important;
+    cursor: pointer !important;
+    transition: transform 0.2s, box-shadow 0.2s !important;
+}
+.auth-box .btn-cosmic-submit:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 5px 15px rgba(144, 0, 255, 0.4) !important;
+}
+
+/* Chrome, Safari, Edge ve Opera için yukarı/aşağı okları tamamen kaldır */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+/* Firefox için yukarı/aşağı okları kaldır */
+input[type="number"] {
+    -moz-appearance: textfield !important;
+}
+
+/* İsteğe bağlı: Admin panelindeki o gün kutusunu tasarıma tam uydurmak için ufak bir makyaj */
+input[type="number"] {
+    text-align: center !important;
+    font-family: monospace !important;
+    outline: none !important;
+    transition: all 0.3s ease !important;
+}
+
+input[type="number"]:focus {
+    box-shadow: 0 0 10px var(--neon-cyan, #00ffcc) !important;
+    border-color: var(--neon-cyan, #00ffcc) !important; 
+}
+
+/* Sitenin Matrix/Siber temasına özel neon terminal renkleri */
+    .term-loading { border: 1px solid #334155; background: #020617; color: #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.15) !important; }
+    .term-success { border: 1px solid #10b981; background: rgba(16, 185, 129, 0.03); color: #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2) !important; }
+    .term-error { border: 1px solid #f43f5e; background: rgba(244, 63, 94, 0.03); color: #f43f5e; box-shadow: 0 0 20px rgba(244, 63, 94, 0.2) !important; }
+    .btn-execute:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(1); }
+
