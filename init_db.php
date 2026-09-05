@@ -14,12 +14,14 @@ try {
             email VARCHAR(255) UNIQUE,
             role VARCHAR(50) DEFAULT 'user',
             hwid VARCHAR(255),
-            bitis_tarihi TIMESTAMP NULL,
-            profil_color VARCHAR(50) DEFAULT '#3498db',
-            profil_bg VARCHAR(50) DEFAULT '#2c3e50',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP NULL
         );
+
+        -- Add missing columns if they don't exist
+        ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS bitis_tarihi TIMESTAMP NULL;
+        ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS profil_color VARCHAR(50) DEFAULT '#3498db';
+        ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS profil_bg VARCHAR(50) DEFAULT '#2c3e50';
 
         CREATE TABLE IF NOT EXISTS hileler (
             id SERIAL PRIMARY KEY,
@@ -42,8 +44,8 @@ try {
             FOREIGN KEY (user_id) REFERENCES kullanicilar(id) ON DELETE CASCADE
         );
 
-        INSERT INTO kullanicilar (username, password, role, bitis_tarihi) VALUES 
-        ('test_user', 'test_password', 'admin', NULL)
+        INSERT INTO kullanicilar (username, password, role) VALUES 
+        ('test_user', 'test_password', 'admin')
         ON CONFLICT (username) DO NOTHING;
     ";
     
