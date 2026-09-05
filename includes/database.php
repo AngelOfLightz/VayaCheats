@@ -7,10 +7,10 @@
 // Session is started in security.php, no need to start again
 
 // Database Configuration
-define('DB_HOST', 'sql213.infinityfree.com');
-define('DB_USER', 'if0_42142730');
-define('DB_PASS', '28gHFFdTbBPL');
-define('DB_NAME', 'if0_42142730_vaya_db');
+define('DB_HOST', 'dpg-dae2ujad0e5s73euod6g-a.frankfurt-postgres.render.com');
+define('DB_USER', 'vayacheats_user');
+define('DB_PASS', '1fsWqtHXvq6gqRgXDt3BcJAt3aIUTfJV');
+define('DB_NAME', 'vayacheats');
 
 // Get PDO connection
 function getDbConnection() {
@@ -18,7 +18,7 @@ function getDbConnection() {
     
     if ($db === null) {
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+            $dsn = "pgsql:host=" . DB_HOST . ";dbname=" . DB_NAME;
             $db = new PDO($dsn, DB_USER, DB_PASS);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
