@@ -53,10 +53,10 @@ class MigrationSystem {
     private function ensureMigrationTable() {
         $this->db->exec("
             CREATE TABLE IF NOT EXISTS {$this->migrationTable} (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 migration_name VARCHAR(255) NOT NULL UNIQUE,
                 executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            )
         ");
     }
     
@@ -89,10 +89,10 @@ class MigrationSystem {
     }
 }
 
-// Initialize migration system
-$migration = new MigrationSystem($db);
+// Initialize migration system (temporarily disabled for PostgreSQL migration)
+// $migration = new MigrationSystem($db);
 
-// Define all migrations
+// Define all migrations (temporarily disabled)
 $migrations = [
     'create_comments_table' => "
         CREATE TABLE IF NOT EXISTS comments (
@@ -423,7 +423,8 @@ $migrations = [
     "
 ];
 
-// Run migrations if requested
+// Run migrations if requested (temporarily disabled)
+/*
 if (isset($_GET['run_migrations']) && isset($_SESSION['role']) && isAdmin()) {
     $results = [];
     foreach ($migrations as $name => $sql) {
@@ -438,4 +439,5 @@ if (isset($_GET['run_migrations']) && isset($_SESSION['role']) && isAdmin()) {
     echo '</pre>';
     exit;
 }
+*/
 ?>
