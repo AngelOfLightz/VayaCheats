@@ -22,6 +22,8 @@ try {
         ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS bitis_tarihi TIMESTAMP NULL;
         ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS profil_color VARCHAR(50) DEFAULT '#3498db';
         ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS profil_bg VARCHAR(50) DEFAULT '#2c3e50';
+        ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS avatar VARCHAR(255) DEFAULT '';
+        ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS avatar_bg VARCHAR(50) DEFAULT '#2c3e50';
 
         CREATE TABLE IF NOT EXISTS hileler (
             id SERIAL PRIMARY KEY,
