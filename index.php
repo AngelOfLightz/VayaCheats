@@ -1,8 +1,6 @@
 <?php
 require_once 'config.php';
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once 'auth_check.php';
 
 $oturum_gecerli = false;
 $kullanici_adi = "";
@@ -15,7 +13,7 @@ if (isset($_SESSION['user_id'])) {
 
     if ($user_data) {
         // ADMIN KONTROLÜ: Admin ise tarih/süre umrumuzda değil, direkt içeride!
-        if ($user_data['role'] === 'admin') {
+        if (isAdmin()) {
             $oturum_gecerli = true;
             $kullanici_adi = htmlspecialchars($_SESSION['username']);
         } 
@@ -32,17 +30,6 @@ if (isset($_SESSION['user_id'])) {
                 session_destroy();
             }
         }
-    }
-}
-if ($oturum_gecerli) {
-    // Eğer admin URL'de özel bir parametre eklemediyse, direkt panele at
-    // Ama eğer "force=home" diye bir şey varsa, ana sayfaya geçişine izin ver
-    if ($_SESSION['role'] === 'admin' && !isset($_GET['force_home'])) {
-        header("Location: admin.php");
-        exit;
-    } elseif ($_SESSION['role'] !== 'admin') {
-        header("Location: user.php");
-        exit;
     }
 }
 ?>
@@ -259,7 +246,7 @@ if ($oturum_gecerli) {
                             }
                     ?>
                             <!-- ⚡ DİNAMİK VAYACHEATS SİBER KART ⚡ -->
-                            <div class="network-node" style="flex: 1; min-width: 320px; max-width: 400px; background: rgba(4, 7, 14, 0.45); border: 1px solid rgba(255,255,255,0.05); border-radius: 18px; padding: 30px; backdrop-filter: blur(30px); position: relative; font-family: monospace;">
+                            <div class="network-node" style="flex: 1; min-width: 320px; max-width: 400px; background: rgba(4, 7, 14, 0.45); border: 1px solid rgba(255,255,255,0.05); border-radius: 18px; padding: 30px; backdrop-filter: blur(30px); position: relative; font-family: monospace; cursor: pointer;" onclick="window.location.href='product.php?id=<?php echo $hile['id']; ?>'">
                                 
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                                     <span style="font-size: 11px; color: #64748b; font-weight: 800; letter-spacing: 1px;">
@@ -284,16 +271,10 @@ if ($oturum_gecerli) {
                                         <span style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; font-size: 10px; padding: 4px 10px; border-radius: 4px;">KERNEL</span>
                                     </div>
 
-                                    <!-- Durum UNDETECTED ise gerçek dosyayı indirtecek indirme düğmesi aktif olur gadaşım -->
-                                    <?php if ($hile['durum'] === 'UNDETECTED' && !empty($hile['dosya_yolu'])): ?>
-                                        <a href="<?php echo htmlspecialchars($hile['dosya_yolu']); ?>" download class="btn-execute" style="background: linear-gradient(135deg, #00ffcc, #00b395); color: #000; font-weight: 900; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-size: 11px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,255,204,0.3); text-align: center;" onclick="siberEnjeksiyonSimulasyonu('<?php echo htmlspecialchars($hile['aranacak_kelime']); ?>')">
-                                            ENJEKTE ET
-                                        </a>
-                                    <?php else: ?>
-                                        <button disabled style="background: #1e293b; color: #64748b; font-weight: 900; padding: 10px 20px; border-radius: 50px; border: none; font-size: 11px; cursor: not-allowed; text-align: center;">
-                                            KİLİTLİ
-                                        </button>
-                                    <?php endif; ?>
+                                    <!-- View Product button instead of direct download -->
+                                    <a href="product.php?id=<?php echo $hile['id']; ?>" class="btn-execute" style="background: linear-gradient(135deg, #00ffcc, #00b395); color: #000; font-weight: 900; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-size: 11px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,255,204,0.3); text-align: center;">
+                                        VIEW DETAILS
+                                    </a>
                                 </div>
 
                             </div>
@@ -350,6 +331,7 @@ if ($oturum_gecerli) {
                 <h3>Güvenli Kanal Bağlantısı</h3>
                 <p class="form-sub-txt">Operasyon ekibimize kriptolu veri paketi gönderin.</p>
                 <form class="cosmic-form" action="send.php" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
                     <div class="cosmic-input-group">
                         <input type="text" name="kod_adi" placeholder="E-posta veya Kod Adınız" required>
                     </div>
@@ -460,7 +442,7 @@ if ($oturum_gecerli) {
 
     </main>
 
-    <footer>[VAYACHEATS CO. © 2026 // ALL SYSTEMS OPERATIONAL ]</footer>
+    <footer>[VAYACHEATS CO. © 2026 // ALL SYSTEMS OPERATIONAL ] <span style="margin-left: 20px;">| <a href="pricing.php" style="color: #00ffcc; text-decoration: none;">PRICING</a></span></footer>
 
     <script src="script.js"></script>
 </body>

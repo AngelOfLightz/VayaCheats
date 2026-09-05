@@ -1,9 +1,7 @@
 <?php
 require_once 'config.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// Session is already started by config.php -> includes/security.php
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['status' => 'error', 'msg' => 'Yetkisiz erişim.']);

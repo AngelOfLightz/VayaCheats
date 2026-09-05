@@ -7,81 +7,110 @@ header("Expires: 0");
 require_once 'config.php';
 $error_msg = ""; $success_msg = "";
 
-// Eğer session başlatılmadıysa otomatik başlat (Giriş yapabilmek için şarttır)
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-session_regenerate_id(true); // BU KOMUT ESKİ OTURUMU ÖLDÜRÜR, YENİSİNİ AÇAR!
+// Session is already started by config.php -> includes/security.php
 // 1. ADAMIN SENDEKİ LİSANS KEYİ İLE HESAP AÇMA MOTORU
 if (isset($_POST['register_action'])) {
-    $user = strip_tags(trim($_POST['reg_username']));
+    // CSRF validation
+    validateCsrfToken($_POST['csrf_token'] ?? '');
+    
+    $user = sanitizeInput($_POST['reg_username']);
     $pass = trim($_POST['reg_password']);
-    $key  = trim($_POST['reg_key']);
+    $key  = sanitizeInput($_POST['reg_key']);
 
     if (!empty($user) && !empty($pass) && !empty($key)) {
-        // Müşterinin yazdığı Key senin ürettiğin aktif Key'ler arasında var mı?
-        $checkKey = $db->prepare("SELECT * FROM lisanslar WHERE lisans_key = ? AND durum = 'aktif'");
-        $checkKey->execute([$key]);
-        
-        if ($checkKey->rowCount() > 0) {
-            $checkUser = $db->prepare("SELECT * FROM kullanicilar WHERE username = ?");
-            $checkUser->execute([$user]);
-            
-            if ($checkUser->rowCount() == 0) {
-                $hashed_pass = md5($pass);                
-                $keyData = $checkKey->fetch(PDO::FETCH_ASSOC);
-                $key_day = (int)($keyData['sure_gun'] ?? 30);
+        // Password validation
+        if (strlen($pass) < 2) {
+            $error_msg = "// ERROR: Password must be at least 2 characters.";
+        } elseif (strlen($pass) > 128) {
+            $error_msg = "// ERROR: Password must be at most 128 characters.";
+        } else {
+            // Rate limiting check
+            if (!checkRateLimit('register_' . $user, 3, 3600)) {
+                $error_msg = "// ERROR: Too many registration attempts. Please wait.";
+            } else {
+                // Müşterinin yazdığı Key senin ürettiğin aktif Key'ler arasında var mı?
+                $checkKey = $db->prepare("SELECT * FROM lisanslar WHERE lisans_key = ? AND durum = 'aktif'");
+                $checkKey->execute([$key]);
+                
+                if ($checkKey->rowCount() > 0) {
+                    $checkUser = $db->prepare("SELECT * FROM kullanicilar WHERE username = ?");
+                    $checkUser->execute([$user]);
+                    
+                    if ($checkUser->rowCount() == 0) {
+                        // Use upgraded password hashing
+                        $hashed_pass = hashPassword($pass);                
+                        $keyData = $checkKey->fetch(PDO::FETCH_ASSOC);
+                        $key_day = (int)($keyData['sure_gun'] ?? 30);
 
-                $default_sure = 0; // Süre girmek istemiyorsan 0 yap
-                // HESAP AÇMA MOTORU - GÜNCELLENMİŞ SORGU
-                // Sadece zorunlu alanları gönderiyoruz, diğerleri veritabanı default ayarlarını kullansın
-                $insert = $db->prepare("INSERT INTO kullanicilar (username, password, role) VALUES (?, ?, 'vip')");
-                $insert->execute([$user, $hashed_pass]);
-                
-                // Key artık kullanıldı, başkası giremez!
-                $updateKey = $db->prepare("UPDATE lisanslar SET durum = 'kullanildi' WHERE lisans_key = ?");
-                $updateKey->execute([$key]);
-                
-                $success_msg = "// KEY_VALIDATED: Hesap başarıyla enjekte edildi. Giriş yapabilirsiniz.";
-            } else { $error_msg = "// ERROR: Bu kod adı siber ağda zaten kayıtlı."; }
-        } else { $error_msg = "// ERROR: Geçersiz veya kullanılmış lisans anahtarı!"; }
+                        $default_sure = 0; // Süre girmek istemiyorsan 0 yap
+                        // HESAP AÇMA MOTORU - GÜNCELLENMİŞ SORGU
+                        // Sadece zorunlu alanları gönderiyoruz, diğerleri veritabanı default ayarlarını kullansın
+                        $insert = $db->prepare("INSERT INTO kullanicilar (username, password, role) VALUES (?, ?, 'vip')");
+                        $insert->execute([$user, $hashed_pass]);
+                        
+                        // Key artık kullanıldı, başkası giremez!
+                        $updateKey = $db->prepare("UPDATE lisanslar SET durum = 'kullanildi' WHERE lisans_key = ?");
+                        $updateKey->execute([$key]);
+                        
+                        $success_msg = "// KEY_VALIDATED: Hesap başarıyla enjekte edildi. Giriş yapabilirsiniz.";
+                    } else { $error_msg = "// ERROR: Bu kod adı siber ağda zaten kayıtlı."; }
+                } else { $error_msg = "// ERROR: Geçersiz veya kullanılmış lisans anahtarı!"; }
+            }
+        }
     } else { $error_msg = "// WARNING: Boş alan bırakmayın."; }
 }
 
 // 2. GİRİŞ YAPMA MOTORU (BUG DÜZELTİLDİ 🌟)
 if (isset($_POST['login_action'])) {
-    $user = strip_tags(trim($_POST['login_username']));
+    // CSRF validation
+    validateCsrfToken($_POST['csrf_token'] ?? '');
+    
+    $user = sanitizeInput($_POST['login_username']);
     $pass = trim($_POST['login_password']);
 
     if (!empty($user) && !empty($pass)) {
-        $query = $db->prepare("SELECT * FROM kullanicilar WHERE username = ?");
-        $query->execute([$user]);
-        $userData = $query->fetch(PDO::FETCH_ASSOC);
-
-        if ($userData && md5($pass) === $userData['password']) {
-            $_SESSION['user_id'] = $userData['id'];
-            $_SESSION['username'] = $userData['username'];
-            $_SESSION['role'] = $userData['role'];
-
-            // BENİ HATIRLA MOTORU:
-            if (isset($_POST['remember_me'])) {
-                setcookie('remember_user', $user, time() + (86400 * 30), "/"); // 30 Gün
-            } else {
-                setcookie('remember_user', '', time() - 3600, "/"); // Çerezi sil
-            }
-            // Siber yönlendirme istasyonu
-            if ($userData['role'] === 'admin') {
-                header("Location: admin.php");
-                exit;
-            } elseif ($userData['role'] === 'vip') {
-                header("Location: user.php");
-                exit;
-            } else {
-                echo "<script>alert('Hesabınız siber ağdan uzaklaştırılmıştır (BANNED)!'); window.location.href='auth.php';</script>";
-                exit;
-            }
+        // Rate limiting check
+        if (!checkRateLimit('login_' . $user, 5, 300)) {
+            $error_msg = "// ERROR: Too many login attempts. Please wait 5 minutes.";
         } else {
-            $error_msg = "// ERROR: Geçersiz kullanıcı adı veya şifre.";
+            $query = $db->prepare("SELECT * FROM kullanicilar WHERE username = ?");
+            $query->execute([$user]);
+            $userData = $query->fetch(PDO::FETCH_ASSOC);
+
+            if ($userData && verifyPassword($pass, $userData['password'])) {
+                // Check for active ban
+                $banCheck = $db->prepare("SELECT expires_at, reason FROM bans WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW()) LIMIT 1");
+                $banCheck->execute([$userData['id']]);
+                $activeBan = $banCheck->fetch();
+
+                if ($activeBan) {
+                    header("Location: banned.php");
+                    exit;
+                } else {
+                    // Regenerate session ID for security (only after successful login)
+                    session_regenerate_id(true);
+                    
+                    $_SESSION['user_id'] = $userData['id'];
+                    $_SESSION['username'] = $userData['username'];
+                    $_SESSION['role'] = $userData['role'];
+
+                    // Update last login
+                    $updateLogin = $db->prepare("UPDATE kullanicilar SET last_login = NOW() WHERE id = ?");
+                    $updateLogin->execute([$userData['id']]);
+
+                    // BENİ HATIRLA MOTORU:
+                    if (isset($_POST['remember_me'])) {
+                        setcookie('remember_user', $user, time() + (86400 * 30), "/", "", true, true); // Secure, HttpOnly
+                    } else {
+                        setcookie('remember_user', '', time() - 3600, "/", "", true, true);
+                    }
+                    // Redirect to index.php after successful login
+                    header("Location: index.php");
+                    exit;
+                }
+            } else {
+                $error_msg = "// ERROR: Geçersiz kullanıcı adı veya şifre.";
+            }
         }
     } else {
         $error_msg = "// WARNING: Boş alan bırakmayın.";
@@ -238,6 +267,7 @@ if (isset($_POST['login_action'])) {
         <div id="login-form-block">
             <div class="auth-title">// SYS_AUTH_REQUEST (GİRİŞ)</div>
             <form action="" method="POST" class="cosmic-form">
+                <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
                 <div class="cosmic-input-group">
                     <input type="text" name="login_username" value="<?php echo $_COOKIE['remember_user'] ?? ''; ?>" placeholder="KOD ADI (USERNAME)" required>
                 </div>
@@ -266,12 +296,14 @@ if (isset($_POST['login_action'])) {
         <div id="register-form-block" class="hidden-form">
             <div class="auth-title">// SYS_REG_INITIALIZE (KAYIT)</div>
             <form action="" method="POST" class="cosmic-form">
+                <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
                 <div class="cosmic-input-group">
                     <input type="text" name="reg_username" placeholder="YENİ KOD ADI" required>
                 </div>
                 <div class="cosmic-input-group">
-                    <input type="password" name="reg_password" placeholder="YENİ ŞİFRE" required>
+                    <input type="password" name="reg_password" placeholder="YENİ ŞİFRE" required minlength="2" maxlength="128">
                 </div>
+                <div style="color: #64748b; font-size: 10px; margin: -10px 0 15px 0;">Recommendation: Use at least 8 characters with uppercase, lowercase, numbers, and special characters for better security.</div>
                 <div class="cosmic-input-group">
                     <input type="text" name="reg_key" placeholder="LİSANS ANAHTARI (KEY)" required>
                 </div>

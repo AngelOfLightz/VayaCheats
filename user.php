@@ -1,6 +1,5 @@
 <?php
 ob_start();
-session_start();
 require_once 'config.php';
 require_once 'auth_check.php';
 
@@ -12,7 +11,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
+if (isset($_SESSION['role']) && isAdmin()) {
     header("Location: admin.php");
     exit;
 }
@@ -20,7 +19,15 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
 $user_id = (int)$_SESSION['user_id'];
 
 // 🔥 TEK VE GÜÇLÜ SORGULU VERİ ÇEKME MOTORU
-$userQuery = $db->prepare("SELECT username, role, bitis_tarihi, profil_color, avatar, avatar_url FROM kullanicilar WHERE id = ?");
+// Check if new columns exist before querying them
+$columnCheck = $db->query("SHOW COLUMNS FROM kullanicilar LIKE 'hwid'");
+$hasNewColumns = $columnCheck->rowCount() > 0;
+
+if ($hasNewColumns) {
+    $userQuery = $db->prepare("SELECT username, role, bitis_tarihi, profil_color, avatar, avatar_url, hwid, created_at, last_login FROM kullanicilar WHERE id = ?");
+} else {
+    $userQuery = $db->prepare("SELECT username, role, bitis_tarihi, profil_color, avatar, avatar_url FROM kullanicilar WHERE id = ?");
+}
 $userQuery->execute([$user_id]);
 $userData = $userQuery->fetch(PDO::FETCH_ASSOC);
 
@@ -31,7 +38,7 @@ if (!$userData) {
 }
 
 // Süre kontrolü
-if ($userData['role'] !== 'admin') {
+if (!isAdmin()) {
     // Veritabanındaki tarih değerini kontrol edelim
     $tarih_degeri = $userData['bitis_tarihi'];
     
@@ -55,6 +62,9 @@ $user_role   = $userData['role'];
 $user_neon   = $userData['profil_color'] ?? '#00ffcc';
 $user_avatar = $userData['avatar'] ?? '🥷';
 $user_photo  = $userData['avatar_url'];
+$user_hwid   = $userData['hwid'] ?? 'Not registered';
+$user_created = $userData['created_at'] ?? 'Unknown';
+$user_last_login = $userData['last_login'] ?? 'Never';
 
 // ... diğer değişkenler ...
 $bitis_tarihi = $userData['bitis_tarihi'];
@@ -308,7 +318,8 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'tab-main';
                 <div class="sidebar-links">
                     <button class="panel-tab-btn" onclick="if(this.classList.contains('active')) return; switchUserTab('tab-main', this);">ANA MERKEZ</button>
                     <button class="panel-tab-btn" onclick="switchUserTab('tab-cheats', this)">⚡ CHEATS & SPOOFER</button>
-                    <button class="panel-tab-btn" onclick="showSection('tab-profile', this)">⚙ PROFILE SYSTEM</button>
+                    <button class="panel-tab-btn" onclick="switchUserTab('tab-profile', this)">⚙ PROFILE SYSTEM</button>
+                    <a href="pricing.php" class="panel-tab-btn" style="text-decoration: none; display: block;">💎 PRICING</a>
                 </div>
             </div>
             <a href="logout.php" style="display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 12px; color: #f87171; border: 1px solid rgba(248,113,113,0.1); text-decoration: none; font-family: monospace; font-size: 12px; font-weight: 700;">➔ SİSTEMDEN ÇIK</a>
@@ -376,7 +387,7 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'tab-main';
                                         if ($hile['durum'] === 'UNDETECTED' && !empty($hile['dosya_yolu'])) { ?>
                                             
                                             <!-- ⚡ KUSURSUZ NEURAL INTERFUSE HİLE ENJEKSİYON GEÇİDİ -->
-                                            <a href="indir.php?hile_id=<?php echo $hile['id']; ?>" class="btn-download" onclick="if(typeof startInjectionCore === 'function') { startInjectionCore('<?php echo htmlspecialchars($hile['aranacak_kelime']); ?>'); }">
+                                            <button class="btn-download" onclick="checkSubscriptionAndDownload(<?php echo $hile['id']; ?>, '<?php echo htmlspecialchars($hile['aranacak_kelime']); ?>', this)">
                                                 <div class="neural-scanner-bar"></div>
                                                 <div class="neural-left-zone">
                                                     <span class="neural-node-id">SYNC_042</span>
@@ -389,7 +400,7 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'tab-main';
                                                     <div class="matrix-hex-stream data-live-slots">1010</div>
                                                     <span class="neural-status-tag">READY</span>
                                                 </div>
-                                            </a>
+                                            </button>
 
                                         <?php } else { ?>
                                             <!-- Kilitli Durum Hücresi -->
@@ -469,19 +480,241 @@ $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'tab-main';
 
                         <div id="tab-profile" class="tab-content" style="display: none;">
                             
-                            <div class="vaya-tab-nav" style="display: flex; gap: 15px; margin-bottom: 25px;">
-                                <button onclick="switchTab('genel')" class="btn-tab active">GENEL</button>
-                                <button onclick="switchTab('istatistik')" class="btn-tab">İSTATİSTİK</button>
-                                <button onclick="switchTab('ayarlar')" class="btn-tab">AYARLAR</button>
+                            <div class="vaya-tab-nav" style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap;">
+                                <button onclick="switchTab('genel')" class="btn-tab active">GENERAL</button>
+                                <button onclick="switchTab('istatistik')" class="btn-tab">STATISTICS</button>
+                                <button onclick="switchTab('security')" class="btn-tab">SECURITY</button>
+                                <button onclick="switchTab('punishments')" class="btn-tab">PUNISHMENTS</button>
+                                <button onclick="switchTab('downloads')" class="btn-tab">DOWNLOAD HISTORY</button>
+                                <button onclick="switchTab('ayarlar')" class="btn-tab">SETTINGS</button>
                             </div>
 
                             <div id="genel" class="tab-content-item">
-                                <div style="display: flex; gap: 40px; align-items: center;">
-                                    <div style="font-size: 80px;"><?php echo $user_avatar; ?></div>
-                                    <div>
-                                        <h2 style="color: var(--user-neon);">OPERATÖR: <?php echo $username; ?></h2>
-                                        <p>Kayıtlı HWID: <?php echo $user_hwid; ?></p>
+                                <div class="user-box" style="max-width: 100%;">
+                                    <div class="box-title neon-title">[ ❖ GENERAL INFORMATION ]</div>
+                                    <div style="display: flex; gap: 40px; align-items: center; margin-bottom: 30px;">
+                                        <div style="font-size: 80px;">
+                                            <?php if (!empty($user_photo)): ?>
+                                                <img src="<?php echo htmlspecialchars($user_photo); ?>" style="width: 150px; height: 150px; border-radius: 50%; border: 3px solid var(--user-neon); object-fit: cover;">
+                                            <?php else: ?>
+                                                <?php echo $user_avatar; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div>
+                                            <h2 style="color: var(--user-neon); font-size: 24px;">OPERATÖR: <?php echo htmlspecialchars($username); ?></h2>
+                                            <p style="color: #64748b; margin: 5px 0;">Role: <span style="color: #fff; font-weight: bold;"><?php echo strtoupper(htmlspecialchars($user_role)); ?></span></p>
+                                            <p style="color: #64748b; margin: 5px 0;">Profile Color: <span style="color: <?php echo $user_neon; ?>; font-weight: bold;"><?php echo htmlspecialchars($user_neon); ?></span></p>
+                                            <p style="color: #64748b; margin: 5px 0;">Member Since: <span style="color: #fff;"><?php echo $user_created ? date('F j, Y', strtotime($user_created)) : 'Unknown'; ?></span></p>
+                                            <p style="color: #64748b; margin: 5px 0;">Last Login: <span style="color: #fff;"><?php echo $user_last_login ? date('F j, Y g:i A', strtotime($user_last_login)) : 'Never'; ?></span></p>
+                                            <p style="color: #64748b; margin: 5px 0;">Account Status: <span style="color: #10b981; font-weight: bold;">ACTIVE</span></p>
+                                        </div>
                                     </div>
+                                </div>
+                            </div>
+                            
+                            <div id="istatistik" class="tab-content-item" style="display: none;">
+                                <div class="user-box" style="max-width: 100%;">
+                                    <div class="box-title neon-title">[ 📊 STATISTICS ]</div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                                        <?php
+                                        $stats = [];
+                                        try {
+                                            $productsOwned = $db->prepare("SELECT COUNT(DISTINCT product_id) FROM download_history WHERE user_id = ?");
+                                            $productsOwned->execute([$user_id]);
+                                            $stats['products'] = $productsOwned->fetchColumn();
+                                            
+                                            $totalDownloads = $db->prepare("SELECT COUNT(*) FROM download_history WHERE user_id = ?");
+                                            $totalDownloads->execute([$user_id]);
+                                            $stats['downloads'] = $totalDownloads->fetchColumn();
+                                            
+                                            $totalComments = $db->prepare("SELECT COUNT(*) FROM comments WHERE user_id = ?");
+                                            $totalComments->execute([$user_id]);
+                                            $stats['comments'] = $totalComments->fetchColumn();
+                                            
+                                            $accountAge = $user_created ? floor((time() - strtotime($user_created)) / (60 * 60 * 24)) : 0;
+                                            $stats['age'] = $accountAge;
+                                        } catch (PDOException $e) {
+                                            $stats = ['products' => 0, 'downloads' => 0, 'comments' => 0, 'age' => 0];
+                                        }
+                                        ?>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 900; color: var(--user-neon);"><?php echo $stats['products']; ?></div>
+                                            <div style="color: #64748b; font-size: 12px; margin-top: 5px;">PRODUCTS OWNED</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 900; color: var(--user-neon);"><?php echo $stats['downloads']; ?></div>
+                                            <div style="color: #64748b; font-size: 12px; margin-top: 5px;">TOTAL DOWNLOADS</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 900; color: var(--user-neon);"><?php echo $stats['comments']; ?></div>
+                                            <div style="color: #64748b; font-size: 12px; margin-top: 5px;">COMMENTS</div>
+                                        </div>
+                                        <div style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 900; color: var(--user-neon);"><?php echo $stats['age']; ?></div>
+                                            <div style="color: #64748b; font-size: 12px; margin-top: 5px;">DAYS ACTIVE</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="security" class="tab-content-item" style="display: none;">
+                                <div class="user-box" style="max-width: 100%;">
+                                    <div class="box-title neon-title">[ 🔒 SECURITY INFORMATION ]</div>
+                                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                                        <div style="display: flex; justify-content: space-between; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                            <span style="color: #64748b;">Last Login IP</span>
+                                            <span style="color: #fff;"><?php echo $_SERVER['REMOTE_ADDR'] ?? 'Unknown'; ?></span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                            <span style="color: #64748b;">Password Last Changed</span>
+                                            <span style="color: #fff;">Not tracked</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                            <span style="color: #64748b;">2FA Status</span>
+                                            <span style="color: #64748b;">Coming Soon</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                            <span style="color: #64748b;">Email Verification</span>
+                                            <span style="color: #64748b;">Coming Soon</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                            <span style="color: #64748b;">Account Integrity</span>
+                                            <span style="color: #10b981; font-weight: bold;">SECURE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="punishments" class="tab-content-item" style="display: none;">
+                                <div class="user-box" style="max-width: 100%;">
+                                    <div class="box-title neon-title">[ ⚠️ PUNISHMENT HISTORY ]</div>
+                                    
+                                    <?php
+                                    try {
+                                        $currentBan = $db->prepare("SELECT * FROM bans WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY created_at DESC LIMIT 1");
+                                        $currentBan->execute([$user_id]);
+                                        $activeBan = $currentBan->fetch(PDO::FETCH_ASSOC);
+                                        
+                                        $currentMute = $db->prepare("SELECT * FROM mutes WHERE user_id = ? AND (expires_at IS NULL OR expires_at > NOW()) ORDER BY created_at DESC LIMIT 1");
+                                        $currentMute->execute([$user_id]);
+                                        $activeMute = $currentMute->fetch(PDO::FETCH_ASSOC);
+                                        
+                                        $banHistory = $db->prepare("SELECT b.*, u.username as moderator FROM bans b LEFT JOIN kullanicilar u ON b.banned_by = u.id WHERE b.user_id = ? AND (b.expires_at IS NOT NULL AND b.expires_at <= NOW()) ORDER BY b.created_at DESC LIMIT 10");
+                                        $banHistory->execute([$user_id]);
+                                        $bans = $banHistory->fetchAll(PDO::FETCH_ASSOC);
+                                        
+                                        $muteHistory = $db->prepare("SELECT m.*, u.username as moderator FROM mutes m LEFT JOIN kullanicilar u ON m.muted_by = u.id WHERE m.user_id = ? AND (m.expires_at IS NOT NULL AND m.expires_at <= NOW()) ORDER BY m.created_at DESC LIMIT 10");
+                                        $muteHistory->execute([$user_id]);
+                                        $mutes = $muteHistory->fetchAll(PDO::FETCH_ASSOC);
+                                    } catch (PDOException $e) {
+                                        $activeBan = null;
+                                        $activeMute = null;
+                                        $bans = [];
+                                        $mutes = [];
+                                    }
+                                    ?>
+                                    
+                                    <?php if ($activeBan): ?>
+                                        <div style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                                            <div style="color: #f43f5e; font-weight: 900; margin-bottom: 10px;">⛔ CURRENT BAN</div>
+                                            <div style="color: #64748b; font-size: 12px;">Reason: <?php echo htmlspecialchars($activeBan['reason'] ?? 'No reason'); ?></div>
+                                            <div style="color: #64748b; font-size: 12px;">Expires: <?php echo $activeBan['expires_at'] ? date('F j, Y H:i', strtotime($activeBan['expires_at'])) : 'Never'; ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($activeMute): ?>
+                                        <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                                            <div style="color: #eab308; font-weight: 900; margin-bottom: 10px;">🔇 CURRENT MUTE</div>
+                                            <div style="color: #64748b; font-size: 12px;">Reason: <?php echo htmlspecialchars($activeMute['reason'] ?? 'No reason'); ?></div>
+                                            <div style="color: #64748b; font-size: 12px;">Expires: <?php echo $activeMute['expires_at'] ? date('F j, Y H:i', strtotime($activeMute['expires_at'])) : 'Never'; ?></div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!$activeBan && !$activeMute): ?>
+                                        <div style="text-align: center; color: #10b981; padding: 20px; margin-bottom: 20px;">✓ No active punishments</div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($bans)): ?>
+                                        <div style="margin-top: 30px;">
+                                            <div style="color: #64748b; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Ban History</div>
+                                            <?php foreach ($bans as $ban): ?>
+                                                <div style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 10px;">
+                                                    <div style="color: #fff; font-weight: bold;"><?php echo htmlspecialchars($ban['reason'] ?? 'No reason'); ?></div>
+                                                    <div style="color: #64748b; font-size: 11px;">By: <?php echo htmlspecialchars($ban['moderator'] ?? 'System'); ?> | <?php echo date('M j, Y', strtotime($ban['created_at'])); ?></div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (!empty($mutes)): ?>
+                                        <div style="margin-top: 30px;">
+                                            <div style="color: #64748b; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">Mute History</div>
+                                            <?php foreach ($mutes as $mute): ?>
+                                                <div style="padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 10px;">
+                                                    <div style="color: #fff; font-weight: bold;"><?php echo htmlspecialchars($mute['reason'] ?? 'No reason'); ?></div>
+                                                    <div style="color: #64748b; font-size: 11px;">By: <?php echo htmlspecialchars($mute['moderator'] ?? 'System'); ?> | <?php echo date('M j, Y', strtotime($mute['created_at'])); ?></div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <div id="downloads" class="tab-content-item" style="display: none;">
+                                <div class="user-box" style="max-width: 100%;">
+                                    <div class="box-title neon-title">[ 📥 DOWNLOAD HISTORY ]</div>
+                                    <?php
+                                    $downloadHistory = $db->prepare("SELECT h.hile_adi, h.durum, dh.downloaded_at FROM download_history dh JOIN hileler h ON dh.product_id = h.id WHERE dh.user_id = ? ORDER BY dh.downloaded_at DESC LIMIT 50");
+                                    $downloadHistory->execute([$user_id]);
+                                    $downloads = $downloadHistory->fetchAll(PDO::FETCH_ASSOC);
+                                    
+                                    if (count($downloads) > 0): ?>
+                                        <div style="background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden;">
+                                            <?php foreach ($downloads as $dl): ?>
+                                                <div style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                                                    <div>
+                                                        <div style="font-weight: bold; color: #fff;"><?php echo htmlspecialchars($dl['hile_adi']); ?></div>
+                                                        <div style="font-size: 12px; color: #64748b;"><?php echo date('M j, Y g:i A', strtotime($dl['downloaded_at'])); ?></div>
+                                                    </div>
+                                                    <span style="font-size: 11px; padding: 4px 10px; border-radius: 4px; background: rgba(0,255,204,0.1); color: #00ffcc;"><?php echo htmlspecialchars($dl['durum']); ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="text-align: center; color: #64748b; padding: 40px;">No download history found.</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <div id="ayarlar" class="tab-content-item" style="display: none;">
+                                <div class="user-box" style="max-width: 100%;">
+                                    <div class="box-title neon-title">[ ⚙️ PROFILE SETTINGS ]</div>
+                                    
+                                    <form action="update_profile.php" method="POST" style="display: flex; flex-direction: column; gap: 20px;">
+                                        <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
+                                        
+                                        <div>
+                                            <label style="color: #64748b; font-size: 12px; display: block; margin-bottom: 8px;">Profile Color</label>
+                                            <input type="color" name="profil_color" value="<?php echo htmlspecialchars($user_neon); ?>" style="width: 100px; height: 40px; border: none; border-radius: 8px; cursor: pointer;">
+                                        </div>
+                                        
+                                        <div>
+                                            <label style="color: #64748b; font-size: 12px; display: block; margin-bottom: 8px;">Avatar Emoji</label>
+                                            <input type="text" name="avatar" value="<?php echo htmlspecialchars($user_avatar); ?>" maxlength="2" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 12px; color: #fff; border-radius: 8px; width: 100px; font-size: 24px;">
+                                        </div>
+                                        
+                                        <div>
+                                            <label style="color: #64748b; font-size: 12px; display: block; margin-bottom: 8px;">Upload Avatar Image</label>
+                                            <form action="upload_avatar.php" method="POST" enctype="multipart/form-data" id="avatarUploadForm" style="display: inline;">
+                                                <input type="hidden" name="csrf_token" value="<?php echo getCsrfToken(); ?>">
+                                                <input type="file" name="avatar" accept="image/*" style="color: #fff;" id="avatarFileInput">
+                                                <button type="submit" style="margin-top: 10px; background: var(--user-neon); color: #000; border: none; padding: 10px 20px; border-radius: 50px; font-weight: 900; cursor: pointer;">Upload</button>
+                                            </form>
+                                            <div id="avatarUploadResult" style="margin-top: 10px; font-size: 12px;"></div>
+                                        </div>
+                                        
+                                        <button type="submit" style="background: var(--user-neon); color: #000; border: none; padding: 12px 30px; border-radius: 50px; font-weight: 900; cursor: pointer; width: fit-content;">Save Settings</button>
+                                    </form>
                                 </div>
                             </div>
                             
@@ -498,6 +731,48 @@ function switchTab(tabId) {
     // Aktif olan butonu bul ve renklendir (basit bir yaklaşım)
     event.currentTarget.classList.add('active');
 }
+
+// Avatar upload form handler
+document.addEventListener('DOMContentLoaded', function() {
+    const avatarForm = document.getElementById('avatarUploadForm');
+    const avatarResult = document.getElementById('avatarUploadResult');
+    
+    if (avatarForm) {
+        avatarForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(avatarForm);
+            const submitBtn = avatarForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+            
+            fetch('upload_avatar.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    avatarResult.style.color = '#10b981';
+                    avatarResult.textContent = data.message;
+                    // Reload page after short delay to show updated avatar
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    avatarResult.style.color = '#f43f5e';
+                    avatarResult.textContent = data.message;
+                }
+            })
+            .catch(error => {
+                avatarResult.style.color = '#f43f5e';
+                avatarResult.textContent = 'Upload failed: ' + error.message;
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload';
+            });
+        });
+    }
+});
 </script>
     <!-- ⚡ VAYACHEATS TIKIR TIKIR ÇALIŞAN GÜVENLİ JS MOTORU -->
     <script>
@@ -770,6 +1045,101 @@ function updateTimer() {
         `${d} Gün, ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
     remainingSeconds--;
+}
+
+function checkSubscriptionAndDownload(productId, searchWord, button) {
+    fetch('indir.php?hile_id=' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success === false && data.error === 'insufficient_subscription') {
+                // Show cyberpunk modal
+                showSubscriptionModal(data.message);
+            } else if (data.success === false) {
+                alert('Error: ' + data.message);
+            } else {
+                // Download successful, redirect to file
+                window.location.href = 'indir.php?hile_id=' + productId;
+                if (typeof startInjectionCore === 'function') {
+                    startInjectionCore(searchWord);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Download check failed:', error);
+            // Fallback to direct download
+            window.location.href = 'indir.php?hile_id=' + productId;
+        });
+}
+
+function showSubscriptionModal(message) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('subscriptionModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'subscriptionModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(10px);
+        `;
+        modal.innerHTML = `
+            <div style="
+                background: rgba(6, 11, 23, 0.95);
+                border: 1px solid #f59e0b;
+                border-radius: 20px;
+                padding: 40px;
+                max-width: 500px;
+                text-align: center;
+                box-shadow: 0 0 50px rgba(245, 158, 11, 0.3);
+            ">
+                <div style="font-size: 48px; margin-bottom: 20px;">💎</div>
+                <h2 style="color: #f59e0b; font-size: 24px; font-weight: bold; margin-bottom: 15px; letter-spacing: 2px;">SUBSCRIPTION REQUIRED</h2>
+                <p id="modalMessage" style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin-bottom: 30px;"></p>
+                <a href="pricing.php" style="
+                    display: inline-block;
+                    padding: 15px 40px;
+                    background: linear-gradient(135deg, #f59e0b, #d97706);
+                    color: #000;
+                    text-decoration: none;
+                    font-weight: bold;
+                    border-radius: 50px;
+                    font-size: 14px;
+                    letter-spacing: 2px;
+                    box-shadow: 0 0 30px rgba(245, 158, 11, 0.4);
+                    transition: all 0.3s;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">UPGRADE NOW</a>
+                <button onclick="closeSubscriptionModal()" style="
+                    display: block;
+                    margin-top: 20px;
+                    background: transparent;
+                    border: none;
+                    color: #64748b;
+                    cursor: pointer;
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                ">CLOSE</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById('modalMessage').textContent = message;
+    modal.style.display = 'flex';
+}
+
+function closeSubscriptionModal() {
+    const modal = document.getElementById('subscriptionModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 // Her saniye motoru tetikle

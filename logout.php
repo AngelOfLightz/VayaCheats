@@ -1,6 +1,6 @@
 <?php
-// Oturum mekanizmasını başlat
-session_start();
+// Load config which handles session initialization properly
+require_once 'config.php';
 
 // Tüm oturum değişkenlerini hafızadan temizle
 $_SESSION = array();

@@ -1,0 +1,23 @@
+# Disable InfinityFree ads/analytics for API endpoints
+<FilesMatch "^api_.*\.php$">
+    <IfModule mod_headers.c>
+        Header always unset X-Powered-By
+        Header always unset Server
+    </IfModule>
+    
+    # Disable any JavaScript injection
+    <IfModule mod_rewrite.c>
+        RewriteEngine Off
+    </IfModule>
+</FilesMatch>
+
+# Ensure API endpoints return JSON
+<FilesMatch "^api_.*\.php$">
+    ForceType application/json
+</FilesMatch>
+
+# Allow direct access to API files
+<FilesMatch "^api_.*\.php$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
