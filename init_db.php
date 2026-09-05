@@ -5,7 +5,7 @@ header('Content-Type: application/json');
 try {
     require_once __DIR__ . '/config.php';
     
-    // Create tables
+    // Create tables with full schema
     $sql = "
         CREATE TABLE IF NOT EXISTS kullanicilar (
             id SERIAL PRIMARY KEY,
@@ -14,6 +14,9 @@ try {
             email VARCHAR(255) UNIQUE,
             role VARCHAR(50) DEFAULT 'user',
             hwid VARCHAR(255),
+            bitis_tarihi TIMESTAMP NULL,
+            profil_color VARCHAR(50) DEFAULT '#3498db',
+            profil_bg VARCHAR(50) DEFAULT '#2c3e50',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP NULL
         );
@@ -39,8 +42,8 @@ try {
             FOREIGN KEY (user_id) REFERENCES kullanicilar(id) ON DELETE CASCADE
         );
 
-        INSERT INTO kullanicilar (username, password, role) VALUES 
-        ('test_user', 'test_password', 'admin')
+        INSERT INTO kullanicilar (username, password, role, bitis_tarihi) VALUES 
+        ('test_user', 'test_password', 'admin', NULL)
         ON CONFLICT (username) DO NOTHING;
     ";
     
