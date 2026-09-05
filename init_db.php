@@ -47,9 +47,11 @@ try {
             FOREIGN KEY (user_id) REFERENCES kullanicilar(id) ON DELETE CASCADE
         );
 
+        // Delete existing test_user and recreate with hashed password
+        DELETE FROM kullanicilar WHERE username = 'test_user';
+        
         INSERT INTO kullanicilar (username, password, role) VALUES 
-        ('test_user', '$2y$12$TestPasswordHashForTesting', 'admin')
-        ON CONFLICT (username) DO NOTHING;
+        ('test_user', '$2y$12$TestPasswordHashForTesting', 'admin');
     ";
     
     $db->exec($sql);
