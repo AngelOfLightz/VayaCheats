@@ -48,7 +48,7 @@ try {
         );
 
         INSERT INTO kullanicilar (username, password, role) VALUES 
-        ('test_user', 'test_password', 'admin')
+        ('test_user', '$2y$12$TestPasswordHashForTesting', 'admin')
         ON CONFLICT (username) DO NOTHING;
     ";
     
